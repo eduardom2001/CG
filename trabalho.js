@@ -4,15 +4,18 @@ import * as THREE from './three.js-master/src/Three.js';
 
 // init
 var up, down, left, right;
-var speed = 0.0001;
-var cubespeed = 0.00005;
+var speed = 0.02;
+var cubespeed = 0.01;
 var gameover = false;
 var Clock = new THREE.Clock();
 Clock.start();
+var delta = 0;
+var interval = 1 / 60;
+
 
 // camera
 const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
-var posCamera = new THREE.Vector3(0, 0, 4);
+var posCamera = new THREE.Vector3(0, 0, 3);
 camera.position.add(posCamera);
 
 // scene
@@ -39,28 +42,21 @@ scene.background = new THREE.Color(0xdddddd);
 var lista = [];
 var j = 0;
 const geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
-//const material = new THREE.MeshNormalMaterial();
-//const mesh = new THREE.Mesh( geometry, material );
-// var posCube = new THREE.Vector3(0.5, 0, 0);
-// mesh.position.x = 0.5;
-//scene.add( mesh );
 
 function addCube() {
     var material = new THREE.MeshNormalMaterial();
     var cube = new THREE.Mesh( geometry, material );
-    
-    cube.position.x = (Math.random()*6)-3;
+    cube.position.x = (Math.random()*8)-4;
     cube.position.y = (Math.random()*6)-3;
     lista.push(cube);
     j += 1;
     scene.add( cube );
-    //return mesh;
 }
 
 function movecube() {
     for ( var i = 0; i < j; i++ ) {
-        lista[i].rotation.x += 0.00005;
-        lista[i].rotation.y += 0.00005;
+        lista[i].rotation.x += 0.05;
+        lista[i].rotation.y += 0.05;
         
 
         // if (lista[i].position.x > playerMesh.position.x) {
@@ -79,24 +75,26 @@ function movecube() {
 
         if (distanciaY <= 0.06 && distanciaX <= 0.05) {
             endGame();
+            return;
         }
 
-       if (distanciaY != 0) {
+        if (distanciaY != 0) {
            var ratio = Math.abs(distanciaX / distanciaY);
            var totaldiv = (distanciaX + distanciaY) / distanciaY;
            var unidadevelocidade = Math.abs(cubespeed / totaldiv);
-       } else { var ratio = 1; var unidadevelocidade = cubespeed; }
+        } else { var ratio = 1; var unidadevelocidade = cubespeed; }
+        var unidadevelocidadex = ratio*unidadevelocidade; 
         
-       if (lista[i].position.x > playerMesh.position.x) {
-           lista[i].position.x -= ratio*unidadevelocidade;
-       } else if (lista[i].position.x < playerMesh.position.x) {
-           lista[i].position.x += ratio*unidadevelocidade;
-       }
-       if (lista[i].position.y > playerMesh.position.y) {
-           lista[i].position.y -= unidadevelocidade;
-       } else if (lista[i].position.y < playerMesh.position.y) {
+        if (lista[i].position.x > playerMesh.position.x) {
+           lista[i].position.x -= unidadevelocidadex;
+        } else if (lista[i].position.x < playerMesh.position.x) {
+           lista[i].position.x += unidadevelocidadex;
+        }
+        if (lista[i].position.y > playerMesh.position.y) {
+           lista[i].position.y -= unidadevelocidade;    
+        } else if (lista[i].position.y < playerMesh.position.y) {
            lista[i].position.y += unidadevelocidade;
-       }
+        }
         //console.log(ratio*unidadevelocidade);
         //console.log("distanciaX", distanciaX);
         //console.log("distanciaY", distanciaY);
@@ -107,8 +105,38 @@ function movecube() {
         //console.log("positiony", lista[i].position.y);
         //console.log("speed", Math.sqrt( (ratio*unidadevelocidade)**2 + unidadevelocidade**2 ));
 
-        // lista[i].lookAt(playerMesh);
-        // lista[i].translateY(cubespeed);
+        for (var k = 0; k < j; k++ ) {
+            if (k == i) {
+                continue;
+            }
+            var cubedistanciaY = lista[k].position.y - lista[i].position.y;
+            var cubedistanciaX = lista[k].position.x - lista[i].position.x;
+            // if (cubedistanciaX < 0.1 && cubedistanciaX > -0.1) {
+            //     if (cubedistanciaX > 0) {
+            //         lista[i].position.x += 0.1;
+            //     } else {
+            //         lista[i].position.x -= 0.1;
+            //     }
+            // }
+            // if (cubedistanciaY < 0.1 && cubedistanciaY > -0.1) {
+            //     if (cubedistanciaX > 0) {
+            //         lista[i].position.y += unidadevelocidade;
+            //     } else {
+            //         lista[i].position.y -= unidadevelocidade;
+            //     }
+            // }
+
+            // var ray = new THREE.Raycaster( lista[i].position, lista[k].position, 0, 2 );
+            // var collisionResults = ray.intersectObjects( lista[k] );
+            // console.log(collisionResults.distance);
+        }
+
+        if (lista[i].position.y > 4) {
+            scene.remove(lista[i]);
+            lista.splice(i, 1);
+            i -= 1;
+            j -= 1;
+        }
     }
 }
 
@@ -121,8 +149,17 @@ var floorMaterial = new THREE.MeshBasicMaterial( { map: floorTexture, side: THRE
 var floorGeometry = new THREE.PlaneGeometry(10, 10, 100, 100);
 var floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.position.z = -0.5;
-//floor.rotation.x = Math.PI / 2;
 scene.add(floor);
+// gameover fundo
+const gameoverTexture = new THREE.TextureLoader().load( "./gameover.jpg" );
+gameoverTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+gameoverTexture.repeat.set( 1, 1 );
+var gameoverMaterial = new THREE.MeshBasicMaterial( { map: gameoverTexture, side: THREE.DoubleSide } );
+//gameoverMaterial.color = 0xff0000;
+var gameoverGeometry = new THREE.PlaneGeometry(10, 10, 100, 100);
+var gameoverfloor = new THREE.Mesh(gameoverGeometry, gameoverMaterial);
+gameoverfloor.position.z = -0.6;
+scene.add(gameoverfloor);
 
 
 //player
@@ -150,6 +187,7 @@ document.body.appendChild( renderer.domElement );
 var posPlayer = new THREE.Vector3(playerMesh.position.x, playerMesh.position.y, playerMesh.position.z);
 function animation( time ) {
     requestAnimationFrame( animation );
+
     if (gameover) {
         return;
     }
@@ -163,20 +201,7 @@ function animation( time ) {
     playerMesh.rotation.x = time / 20000;
     playerMesh.rotation.y = time / 20000;
 
-    if (up == true) {
-        playerMesh.position.y += speed;
-        //console.log("up");
-    } else if (down == true) {
-        playerMesh.position.y -= speed;
-        //console.log("down");
-    }
-    if (left == true) {
-        playerMesh.position.x -= speed;
-        //console.log("left");
-    } else if (right == true) {
-        playerMesh.position.x += speed;
-        //console.log("right");
-    }
+    
     
     //console.log(playerMesh.position.x, playerMesh.position.y);
     
@@ -187,13 +212,33 @@ function animation( time ) {
     camera.position.y = playerMesh.position.y;
     camera.position.x = playerMesh.position.x;
 
-    movecube();
 
     // var distancia = posCube.distanceTo(posPlayer);
     // mesh.position.add(posCube);
     
 
-	renderer.render( scene, camera );
+    delta += Clock.getDelta();
+    if ( delta > interval ) {
+
+        if (up == true) {
+            playerMesh.position.y += speed;
+            //console.log("up");
+        } else if (down == true) {
+            playerMesh.position.y -= speed;
+            //console.log("down");
+        }
+        if (left == true) {
+            playerMesh.position.x -= speed;
+            //console.log("left");
+        } else if (right == true) {
+            playerMesh.position.x += speed;
+            //console.log("right");
+        }
+        movecube();
+
+        renderer.render( scene, camera );
+        delta = delta % interval;
+    }
 
 }
 
@@ -204,21 +249,23 @@ function onKeyDown(event) {
     console.log('keyCode', keyCode);
 
     if (keyCode == 87) {
-        up = true;
+        up = true; // w
     } else if (keyCode == 83) {
-        down = true;
+        down = true; // s
     }
     if (keyCode == 65) {
-        left = true;
+        left = true; // a
     } else if (keyCode == 68) {
-        right = true;
+        right = true; // d
     }
-    if (keyCode == 32) {
-        playerMesh.position.set(0, 0, 0);
-        j = 0;
+    if (keyCode == 32 && gameover) {
+        playerMesh.position.set(0, 0, 0); // spacebar
+        gameover = false;
+        floor.position.z = -0.5;
+        gameoverfloor.position.z = -0.6;
     }
     if (keyCode == 69 ) {
-        addCube();   
+        addCube(); // e
     }
 };
 function onKeyUp(event) {
@@ -245,13 +292,11 @@ document.addEventListener("keyup", onKeyUp, false);
 
 
 function endGame() {
-    const gameoverTexture = new THREE.TextureLoader().load( "./gameover.png" );
-    var gameoverMaterial = new THREE.MeshBasicMaterial( { map: gameoverTexture, side: THREE.DoubleSide } );
-    var gameoverfloor = new THREE.Mesh(floorGeometry, gameoverMaterial);
+    floor.position.z = -0.6;
     gameoverfloor.position.z = -0.5;
-    scene.add(gameoverfloor);
     gameover = true;
     console.log("gameover");
+    renderer.render( scene, camera );
   }
 
 
