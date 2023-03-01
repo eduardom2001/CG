@@ -1,16 +1,18 @@
 import * as THREE from './three.js-master/src/Three.js';
 
-// var keyboard = new THREE.KeyboardState();
-
 // init
 var up, down, left, right;
 var speed = 0.02;
-var cubespeed = 0.01;
+var cubespeed = 0.015;
+var cubesize = 1;
 var gameover = false;
 var Clock = new THREE.Clock();
 Clock.start();
 var delta = 0;
 var interval = 1 / 60;
+var cont = 0;
+var donutspeed = 0.02;
+var donutspeedy = 0.015
 
 
 // camera
@@ -40,17 +42,39 @@ scene.background = new THREE.Color(0xdddddd);
 
 // cube
 var lista = [];
+var listatamanho = [];
+var listavelocidade = [];
 var j = 0;
 const geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
 
 function addCube() {
     var material = new THREE.MeshNormalMaterial();
     var cube = new THREE.Mesh( geometry, material );
-    cube.position.x = (Math.random()*8)-4;
-    cube.position.y = (Math.random()*6)-3;
+    while (true) {
+        cube.position.x = (Math.random()*10)-5;
+        cube.position.y = (Math.random()*8)-4;
+        var distanciaY = Math.abs(playerMesh.position.y - cube.position.y);
+        var distanciaX = Math.abs(playerMesh.position.x - cube.position.x);
+        if (distanciaY > 0.1 && distanciaX > 0.1) {
+            break;
+        }
+    }
+    var cubevelocidade = cubespeed;
+    var cubetamanho = cubesize;
     lista.push(cube);
+    listatamanho.push(cubetamanho);
+    listavelocidade.push(cubevelocidade);
     j += 1;
     scene.add( cube );
+}
+function removeCube(i) {
+    scene.remove(lista[i]);
+    lista.splice(i, 1);
+    listatamanho.splice(i, 1);
+    listavelocidade.splice(i, 1);
+    i -= 1;
+    j -= 1;
+    return i;
 }
 
 function movecube() {
@@ -58,7 +82,7 @@ function movecube() {
         lista[i].rotation.x += 0.05;
         lista[i].rotation.y += 0.05;
         
-
+        // primeira
         // if (lista[i].position.x > playerMesh.position.x) {
         //     lista[i].position.x -= cubespeed;
         // } else if (lista[i].position.x < playerMesh.position.x) {
@@ -73,16 +97,17 @@ function movecube() {
         var distanciaY = Math.abs(playerMesh.position.y - lista[i].position.y);
         var distanciaX = Math.abs(playerMesh.position.x - lista[i].position.x);
 
-        if (distanciaY <= 0.06 && distanciaX <= 0.05) {
+        if (distanciaY <= (0.06*listatamanho[i]) && distanciaX <= (0.06*listatamanho[i])) {
             endGame();
-            return;
+            break;
         }
 
+        // segunda
         if (distanciaY != 0) {
            var ratio = Math.abs(distanciaX / distanciaY);
            var totaldiv = (distanciaX + distanciaY) / distanciaY;
-           var unidadevelocidade = Math.abs(cubespeed / totaldiv);
-        } else { var ratio = 1; var unidadevelocidade = cubespeed; }
+           var unidadevelocidade = Math.abs(listavelocidade[i] / totaldiv);
+        } else { var ratio = 1; var unidadevelocidade = listavelocidade[i]; }
         var unidadevelocidadex = ratio*unidadevelocidade; 
         
         if (lista[i].position.x > playerMesh.position.x) {
@@ -95,51 +120,94 @@ function movecube() {
         } else if (lista[i].position.y < playerMesh.position.y) {
            lista[i].position.y += unidadevelocidade;
         }
-        //console.log(ratio*unidadevelocidade);
-        //console.log("distanciaX", distanciaX);
-        //console.log("distanciaY", distanciaY);
-        //console.log("ratio", ratio);
-        //console.log("totaldiv", totaldiv);
-        //console.log("unidadevelocidade", unidadevelocidade);
-        //console.log("positionx", lista[i].position.x);
-        //console.log("positiony", lista[i].position.y);
-        //console.log("speed", Math.sqrt( (ratio*unidadevelocidade)**2 + unidadevelocidade**2 ));
 
+        // EVOLUIR CUBO
+        if (listatamanho[i] >= 5) {
+            addDonut(lista[i].position.x, lista[i].position.y);
+            i = removeCube(i);
+            continue;
+        }
+
+        // JUNTAR OS CUBOS
         for (var k = 0; k < j; k++ ) {
             if (k == i) {
                 continue;
             }
-            var cubedistanciaY = lista[k].position.y - lista[i].position.y;
-            var cubedistanciaX = lista[k].position.x - lista[i].position.x;
-            // if (cubedistanciaX < 0.1 && cubedistanciaX > -0.1) {
-            //     if (cubedistanciaX > 0) {
-            //         lista[i].position.x += 0.1;
-            //     } else {
-            //         lista[i].position.x -= 0.1;
-            //     }
-            // }
-            // if (cubedistanciaY < 0.1 && cubedistanciaY > -0.1) {
-            //     if (cubedistanciaX > 0) {
-            //         lista[i].position.y += unidadevelocidade;
-            //     } else {
-            //         lista[i].position.y -= unidadevelocidade;
-            //     }
-            // }
-
-            // var ray = new THREE.Raycaster( lista[i].position, lista[k].position, 0, 2 );
-            // var collisionResults = ray.intersectObjects( lista[k] );
-            // console.log(collisionResults.distance);
-        }
-
-        if (lista[i].position.y > 4) {
-            scene.remove(lista[i]);
-            lista.splice(i, 1);
-            i -= 1;
-            j -= 1;
+            var cubedistanciaY = Math.abs(lista[k].position.y - lista[i].position.y);
+            var cubedistanciaX = Math.abs(lista[k].position.x - lista[i].position.x);
+            if (cubedistanciaX < (0.1*listatamanho[k]) && cubedistanciaY < (0.1*listatamanho[i])) {
+                if (listatamanho[i] > listatamanho[k]) {
+                    lista[k].position.y = lista[i].position.y;
+                    lista[k].position.x = lista[i].position.x;
+                }
+                listatamanho[k] += listatamanho[i];
+                lista[k].scale.set(listatamanho[k], listatamanho[k], listatamanho[k]);
+                listavelocidade[k] -= 0.002*(listatamanho[k] - 1);
+                i = removeCube(i);
+                break;
+            }
         }
     }
 }
 
+function removeAll(){
+    // console.log("REMOVEALL");
+    for ( var i = 0; i < j; i++ ) {
+        i = removeCube(i);
+    }
+    for ( var a = 0; a < b; a++ ) {
+        console.log("a",a);
+        scene.remove(listadonut[a]);
+        listadonut.splice(a, 1);
+        listadonutspeed.splice(a, 1);
+        listadonutspeedy.splice(a, 1);
+        a -= 1;
+        b -= 1;
+    }
+}
+
+// donut
+var listadonut = [];
+var listadonutspeed = [];
+var listadonutspeedy = [];
+const donutgeometry = new THREE.TorusGeometry( 0.2, 0.06, 10, 20 );
+var donutmaterial = new THREE.MeshPhongMaterial();
+donutmaterial.color = new THREE.Color(0xff0000);
+donutmaterial.flatShading = true;
+donutmaterial.emissive = new THREE.Color(0x003903);
+donutmaterial.shininess = 100;
+donutmaterial.specular = new THREE.Color(0x333333);
+var b = 0;
+
+function addDonut(donutX, donutY) {
+    var donut = new THREE.Mesh( donutgeometry, donutmaterial );
+    listadonut.push(donut);
+    listadonutspeed.push(Math.random() <= 0.5 ? donutspeed : -donutspeed);
+    listadonutspeedy.push(Math.random() <= 0.5 ? donutspeedy : -donutspeedy);
+    donut.position.x = donutX;
+    donut.position.y = donutY;
+    b += 1;
+    scene.add( donut );
+}
+function moveDonut() {
+    for (var a = 0; a < b; a++){
+        var distanciaY = Math.abs(playerMesh.position.y - listadonut[a].position.y);
+        var distanciaX = Math.abs(playerMesh.position.x - listadonut[a].position.x);
+        if (distanciaY <= 0.25 && distanciaX <= 0.25) {
+            endGame();
+            break;
+        }
+        console.log(listadonutspeed[a]);
+        listadonut[a].position.x += listadonutspeed[a];
+        if (listadonut[a].position.x > 5 || listadonut[a].position.x < -5){
+            listadonutspeed[a] *= -1;
+        }
+        listadonut[a].position.y += listadonutspeedy[a];
+        if (listadonut[a].position.y > 5 || listadonut[a].position.y < -5){
+            listadonutspeedy[a] *= -1;
+        }
+    }
+}
 
 // fundo
 const floorTexture = new THREE.TextureLoader().load( "./checkerboard.jpg" );
@@ -155,12 +223,10 @@ const gameoverTexture = new THREE.TextureLoader().load( "./gameover.jpg" );
 gameoverTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
 gameoverTexture.repeat.set( 1, 1 );
 var gameoverMaterial = new THREE.MeshBasicMaterial( { map: gameoverTexture, side: THREE.DoubleSide } );
-//gameoverMaterial.color = 0xff0000;
 var gameoverGeometry = new THREE.PlaneGeometry(10, 10, 100, 100);
 var gameoverfloor = new THREE.Mesh(gameoverGeometry, gameoverMaterial);
 gameoverfloor.position.z = -0.6;
 scene.add(gameoverfloor);
-
 
 //player
 const playerGeometry = new THREE.IcosahedronGeometry(0.06, 10);
@@ -180,9 +246,6 @@ renderer.setSize( window.innerWidth/3, window.innerHeight/3, false);
 renderer.setAnimationLoop( animation );
 document.body.appendChild( renderer.domElement );
 
-//var cube = new addCube(geometry);
-//scene.add( cube );
-
 // animation
 var posPlayer = new THREE.Vector3(playerMesh.position.x, playerMesh.position.y, playerMesh.position.z);
 function animation( time ) {
@@ -192,18 +255,8 @@ function animation( time ) {
         return;
     }
 
-    //console.log(time);
-    //console.log(Clock);
-
-    
-
-
     playerMesh.rotation.x = time / 20000;
     playerMesh.rotation.y = time / 20000;
-
-    
-    
-    //console.log(playerMesh.position.x, playerMesh.position.y);
     
     if (playerMesh.position.x > 5 || playerMesh.position.x < -5 || playerMesh.position.y > 5 || playerMesh.position.y < -5) {
         endGame();
@@ -212,29 +265,25 @@ function animation( time ) {
     camera.position.y = playerMesh.position.y;
     camera.position.x = playerMesh.position.x;
 
-
-    // var distancia = posCube.distanceTo(posPlayer);
-    // mesh.position.add(posCube);
-    
-
     delta += Clock.getDelta();
     if ( delta > interval ) {
-
         if (up == true) {
             playerMesh.position.y += speed;
-            //console.log("up");
         } else if (down == true) {
             playerMesh.position.y -= speed;
-            //console.log("down");
         }
         if (left == true) {
             playerMesh.position.x -= speed;
-            //console.log("left");
         } else if (right == true) {
             playerMesh.position.x += speed;
-            //console.log("right");
         }
         movecube();
+        moveDonut();
+        cont += 1;
+        if (cont == 60) {
+            addCube();
+            cont = 0;
+        }
 
         renderer.render( scene, camera );
         delta = delta % interval;
@@ -260,6 +309,7 @@ function onKeyDown(event) {
     }
     if (keyCode == 32 && gameover) {
         playerMesh.position.set(0, 0, 0); // spacebar
+        removeAll();
         gameover = false;
         floor.position.z = -0.5;
         gameoverfloor.position.z = -0.6;
@@ -273,17 +323,13 @@ function onKeyUp(event) {
 
     if (keyCode == 87) {
         up = false;
-        console.log("Nup");
     } else if (keyCode == 83) {
         down = false;
-        console.log("Ndown");
     }
     if (keyCode == 65) {
         left = false;
-        console.log("Nleft");
     } else if (keyCode == 68) {
         right = false;
-        console.log("Nright");
     }
 }
 document.addEventListener("keydown", onKeyDown, false);
