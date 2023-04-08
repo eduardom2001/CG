@@ -191,6 +191,7 @@ function addDonut(donutX, donutY) {
 }
 function moveDonut() {
     for (var a = 0; a < b; a++){
+        listadonut[a].rotation.z += 0.05;
         var distanciaY = Math.abs(playerMesh.position.y - listadonut[a].position.y);
         var distanciaX = Math.abs(playerMesh.position.x - listadonut[a].position.x);
         if (distanciaY <= 0.25 && distanciaX <= 0.25) {
